@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'https://muscle-metrics-backend-1.onrender.com',
+        target: 'https://muscle-metrics-backend-production.up.railway.app',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, '/api'),

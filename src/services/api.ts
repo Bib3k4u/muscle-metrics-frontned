@@ -7,7 +7,7 @@ const isLocalhost = window.location.hostname === 'localhost' || window.location.
 // Use a relative URL in development to leverage the Vite proxy
 const apiBaseUrl = isDevelopment 
   ? '/api' // When in development, use relative URL that will be handled by proxy
-  : 'https://muscle-metrics-backend-1.onrender.com/api';
+  : 'https://muscle-metrics-backend-production.up.railway.app/api';
 
 console.log(`API configured with: ${apiBaseUrl}`);
 console.log(`Development mode: ${isDevelopment}`);
@@ -200,11 +200,40 @@ export const authApi = {
 
 export const muscleGroupsApi = {
   getAll: async () => {
-    // Try the API call first - ensure we have auth headers
-    const token = getAuthToken();
-    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    // Fallback muscle groups in case API fails
+    const fallbackMuscleGroups = [
+      { id: "chest", name: "Chest" },
+      { id: "back", name: "Back" },
+      { id: "legs", name: "Legs" },
+      { id: "shoulders", name: "Shoulders" },
+      { id: "arms", name: "Arms" },
+      { id: "biceps", name: "Biceps" },
+      { id: "triceps", name: "Triceps" },
+      { id: "core", name: "Core" },
+      { id: "abs", name: "Abs" },
+      { id: "cardio", name: "Cardio" }
+    ];
     
-    return await api.get('/muscle-groups/public', config);
+    try {
+      // Try the API call first - ensure we have auth headers
+      const token = getAuthToken();
+      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+      
+      const response = await api.get('/muscle-groups/public', config);
+      return response;
+    } catch (error) {
+      console.warn("API call for muscle groups failed, using fallback data", error);
+      
+      // Return the fallback muscle groups in the expected format
+      return {
+        data: fallbackMuscleGroups,
+        status: 200,
+        statusText: "OK (Fallback)",
+        headers: {},
+        config: {},
+        usingMock: true
+      };
+    }
   },
   getById: (id: string) => {
     const token = getAuthToken();
@@ -257,16 +286,13 @@ export const exerciseTemplatesApi = {
 
 export const workoutsApi = {
   getAll: async () => {
-    // First try to sync any pending workouts
-    await workoutsApi.syncPendingWorkouts();
-    
     // Ensure auth token is attached to the request
     const token = getAuthToken();
     if (!token) {
       console.warn('No auth token available - workout API may fail');
     }
     
-    // Then get all workouts from the server with extended timeout
+    // Get all workouts from the server with extended timeout
     return await api.get('/workouts', {
       timeout: 90000 // 90 seconds for larger datasets
     });
@@ -348,46 +374,6 @@ export const workoutsApi = {
     api.delete(`/workouts/${workoutId}/exercises/${exerciseId}`),
   copyWorkout: (workoutId: string, newDate: string) => 
     api.post(`/workouts/${workoutId}/copy?newDate=${newDate}`),
-  syncPendingWorkouts: async () => {
-    try {
-      const storedWorkouts = localStorage.getItem('muscle-metrics-workouts');
-      if (!storedWorkouts) return { synced: 0 };
-      
-      const workouts = JSON.parse(storedWorkouts);
-      const pendingWorkouts = workouts.filter((w: any) => w.pendingSync);
-      
-      if (pendingWorkouts.length === 0) return { synced: 0 };
-      
-      let syncedCount = 0;
-      const updatedWorkouts = [...workouts];
-      
-      // Try to sync each pending workout
-      for (const workout of pendingWorkouts) {
-        const { id, pendingSync, ...workoutData } = workout;
-        
-        // Create workout in the backend
-        const response = await api.post('/workouts', workoutData);
-        
-        // Update the local workout with the server ID and mark as synced
-        const index = updatedWorkouts.findIndex((w: any) => w.id === id);
-        if (index !== -1) {
-          updatedWorkouts[index] = {
-            ...response.data,
-            pendingSync: false
-          };
-          syncedCount++;
-        }
-      }
-      
-      // Save the updated workouts back to localStorage
-      localStorage.setItem('muscle-metrics-workouts', JSON.stringify(updatedWorkouts));
-      
-      return { synced: syncedCount };
-    } catch (error) {
-      console.error("Failed to sync pending workouts:", error);
-      return { synced: 0, error };
-    }
-  },
   getExerciseHistory: async (exerciseTemplateId: string, startDate?: string) => {
     // If startDate is provided, check if the range might be too large
     if (startDate) {

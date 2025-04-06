@@ -84,91 +84,44 @@ const WorkoutDetails = () => {
         setLoading(true);
         setError(null);
         
-        try {
-          // First try to fetch from API
-          const response = await workoutsApi.getById(id);
-          console.log("Workout data from API:", response.data);
-          
-          // Make sure exercises array exists and is properly populated
-          let workoutData = response.data;
-          
-          // Ensure the exercises array exists
-          if (!workoutData.exercises) {
-            workoutData.exercises = [];
-          }
-          
-          // Ensure all exercises have their sets defined and completed flag set
-          if (workoutData.exercises.length > 0) {
-            workoutData.exercises.forEach((exercise: any) => {
-              if (!exercise.sets) {
-                exercise.sets = [];
-              }
-              
-              // Make sure each set has a completed flag
-              exercise.sets.forEach((set: any) => {
-                if (set.completed === undefined) {
-                  set.completed = false;
-                }
-              });
-            });
-          }
-          
-          console.log("Processed workout data:", workoutData);
-          
-          setWorkout(workoutData);
-          setEditedName(workoutData.name);
-          setEditedNotes(workoutData.notes || "");
-          setIsUsingLocalStorage(false);
-          setIsPendingSync(false);
-        } catch (apiError) {
-          console.error("Failed to fetch workout from API:", apiError);
-          
-          // Try to fetch from localStorage
-          const storedWorkouts = localStorage.getItem('muscle-metrics-workouts');
-          if (storedWorkouts) {
-            const localWorkouts = JSON.parse(storedWorkouts);
-            const foundWorkout = localWorkouts.find((w: Workout) => w.id === id);
-            
-            if (foundWorkout) {
-              console.log("Workout data from localStorage:", foundWorkout);
-              
-              // Make sure exercises array exists and is properly populated
-              if (!foundWorkout.exercises) {
-                foundWorkout.exercises = [];
-              }
-              
-              // Make sure all sets have the completed flag
-              if (foundWorkout.exercises.length > 0) {
-                foundWorkout.exercises.forEach((exercise: any) => {
-                  if (!exercise.sets) {
-                    exercise.sets = [];
-                  }
-                  
-                  exercise.sets.forEach((set: any) => {
-                    if (set.completed === undefined) {
-                      set.completed = false;
-                    }
-                  });
-                });
-              }
-              
-              console.log("Processed local workout data:", foundWorkout);
-              
-              setWorkout(foundWorkout);
-              setEditedName(foundWorkout.name);
-              setEditedNotes(foundWorkout.notes || "");
-              setIsUsingLocalStorage(true);
-              setIsPendingSync(foundWorkout.pendingSync || false);
-            } else {
-              throw new Error("Workout not found in local storage");
-            }
-          } else {
-            throw new Error("No local workouts available");
-          }
+        // Only fetch from API, no localStorage fallback
+        const response = await workoutsApi.getById(id);
+        console.log("Workout data from API:", response.data);
+        
+        // Make sure exercises array exists and is properly populated
+        let workoutData = response.data;
+        
+        // Ensure the exercises array exists
+        if (!workoutData.exercises) {
+          workoutData.exercises = [];
         }
+        
+        // Ensure all exercises have their sets defined and completed flag set
+        if (workoutData.exercises.length > 0) {
+          workoutData.exercises.forEach((exercise: any) => {
+            if (!exercise.sets) {
+              exercise.sets = [];
+            }
+            
+            // Make sure each set has a completed flag
+            exercise.sets.forEach((set: any) => {
+              if (set.completed === undefined) {
+                set.completed = false;
+              }
+            });
+          });
+        }
+        
+        console.log("Processed workout data:", workoutData);
+        
+        setWorkout(workoutData);
+        setEditedName(workoutData.name);
+        setEditedNotes(workoutData.notes || "");
+        setIsUsingLocalStorage(false);
+        setIsPendingSync(false);
       } catch (error) {
         console.error("Error fetching workout:", error);
-        setError("Failed to load workout details");
+        setError("Failed to load workout details. The workout may not exist or the server is unavailable.");
       } finally {
         setLoading(false);
       }
@@ -189,6 +142,42 @@ const WorkoutDetails = () => {
     // No longer update API or localStorage immediately - user will click save button
   };
   
+  const handleDeleteExercise = async (exerciseIndex: number) => {
+    if (!workout) return;
+    
+    const exerciseId = workout.exercises[exerciseIndex].id;
+    const exerciseName = workout.exercises[exerciseIndex].exerciseTemplate.name;
+    
+    try {
+      // First update UI
+      const updatedWorkout = { ...workout };
+      updatedWorkout.exercises = updatedWorkout.exercises.filter((_, i) => i !== exerciseIndex);
+      setWorkout(updatedWorkout);
+      
+      // Update via API only
+      await workoutsApi.removeExercise(workout.id, exerciseId);
+      toast({
+        title: "Success",
+        description: `${exerciseName} removed from workout`,
+      });
+    } catch (error) {
+      console.error("Failed to delete exercise:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove exercise",
+        variant: "destructive",
+      });
+      
+      // Fetch workout again to restore state
+      try {
+        const response = await workoutsApi.getById(workout.id);
+        setWorkout(response.data);
+      } catch (refreshError) {
+        console.error("Failed to refresh workout data:", refreshError);
+      }
+    }
+  };
+  
   const handleUpdateExerciseSets = (exerciseIndex: number, sets: Set[]) => {
     if (!workout) return;
     
@@ -197,40 +186,31 @@ const WorkoutDetails = () => {
     
     setWorkout(updatedWorkout);
     
-    // Update in localStorage or API
-    if (isUsingLocalStorage) {
-      updateLocalWorkout(updatedWorkout);
-      toast({
-        title: "Success",
-        description: "Exercise sets updated",
-      });
-    } else {
-      // Update via API
-      try {
-        const exerciseId = workout.exercises[exerciseIndex].id;
-        const updatedExercise = {
-          exerciseTemplateId: workout.exercises[exerciseIndex].exerciseTemplate.id,
-          sets: sets
-        };
-        
-        workoutsApi.updateExercise(workout.id, exerciseId, updatedExercise)
-          .then(() => {
-            toast({
-              title: "Success",
-              description: "Exercise sets updated",
-            });
-          })
-          .catch(error => {
-            console.error("Failed to update exercise:", error);
-            toast({
-              title: "Error",
-              description: "Failed to update exercise sets",
-              variant: "destructive",
-            });
+    // Update via API only
+    try {
+      const exerciseId = workout.exercises[exerciseIndex].id;
+      const updatedExercise = {
+        exerciseTemplateId: workout.exercises[exerciseIndex].exerciseTemplate.id,
+        sets: sets
+      };
+      
+      workoutsApi.updateExercise(workout.id, exerciseId, updatedExercise)
+        .then(() => {
+          toast({
+            title: "Success",
+            description: "Exercise sets updated",
           });
-      } catch (error) {
-        console.error("Error updating exercise:", error);
-      }
+        })
+        .catch(error => {
+          console.error("Failed to update exercise:", error);
+          toast({
+            title: "Error",
+            description: "Failed to update exercise sets",
+            variant: "destructive",
+          });
+        });
+    } catch (error) {
+      console.error("Error updating exercise:", error);
     }
   };
   
@@ -312,30 +292,20 @@ const WorkoutDetails = () => {
     };
     
     try {
-      if (isUsingLocalStorage) {
-        updateLocalWorkout(updatedWorkout);
-        setWorkout(updatedWorkout);
-        setIsEditing(false);
-        
-        toast({
-          title: "Success",
-          description: "Workout updated successfully",
-        });
-      } else {
-        await workoutsApi.update(workout.id, {
-          name: editedName,
-          notes: editedNotes,
-          date: workout.date
-        });
-        
-        setWorkout(updatedWorkout);
-        setIsEditing(false);
-        
-        toast({
-          title: "Success",
-          description: "Workout updated successfully",
-        });
-      }
+      // Update via API only
+      await workoutsApi.update(workout.id, {
+        name: editedName,
+        notes: editedNotes,
+        date: workout.date
+      });
+      
+      setWorkout(updatedWorkout);
+      setIsEditing(false);
+      
+      toast({
+        title: "Success",
+        description: "Workout updated successfully",
+      });
     } catch (error) {
       console.error("Failed to update workout:", error);
       toast({
@@ -350,16 +320,8 @@ const WorkoutDetails = () => {
     if (!workout) return;
     
     try {
-      if (isUsingLocalStorage) {
-        const storedWorkouts = localStorage.getItem('muscle-metrics-workouts');
-        if (storedWorkouts) {
-          const workouts = JSON.parse(storedWorkouts);
-          const filteredWorkouts = workouts.filter((w: Workout) => w.id !== workout.id);
-          localStorage.setItem('muscle-metrics-workouts', JSON.stringify(filteredWorkouts));
-        }
-      } else {
-        await workoutsApi.delete(workout.id);
-      }
+      // Delete via API only
+      await workoutsApi.delete(workout.id);
       
       toast({
         title: "Success",
@@ -387,52 +349,6 @@ const WorkoutDetails = () => {
       day: 'numeric',
     };
     return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-  
-  const syncWorkoutToDatabase = async () => {
-    if (!workout || !isUsingLocalStorage || !isPendingSync) return;
-    
-    setIsSyncing(true);
-    try {
-      // Extract workout data to send to the server
-      const { id: localId, pendingSync, ...workoutData } = workout as any;
-      
-      // Try to create the workout in the database
-      const response = await workoutsApi.create(workoutData);
-      
-      // Success! Get the new ID from the server
-      const serverId = response.data.id;
-      
-      toast({
-        title: "Success",
-        description: "Workout saved to the database successfully",
-      });
-      
-      // Update localStorage to mark this workout as synced
-      const storedWorkouts = localStorage.getItem('muscle-metrics-workouts');
-      if (storedWorkouts) {
-        const workouts = JSON.parse(storedWorkouts);
-        const updatedWorkouts = workouts.map((w: any) => 
-          w.id === localId ? { ...response.data, pendingSync: false } : w
-        );
-        localStorage.setItem('muscle-metrics-workouts', JSON.stringify(updatedWorkouts));
-      }
-      
-      setIsUsingLocalStorage(false);
-      setIsPendingSync(false);
-      
-      // Navigate to the new URL with the server ID
-      navigate(`/workouts/${serverId}`, { replace: true });
-    } catch (error) {
-      console.error("Failed to sync workout to database:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save workout to the database. Will try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSyncing(false);
-    }
   };
   
   if (loading) {
@@ -494,21 +410,6 @@ const WorkoutDetails = () => {
         )}
         
         <div className="flex items-center space-x-2">
-          {isPendingSync && (
-            <Button 
-              className="bg-green-600 hover:bg-green-700"
-              onClick={syncWorkoutToDatabase}
-              disabled={isSyncing}
-            >
-              {isSyncing ? (
-                <div className="animate-spin h-4 w-4 mr-1 border-2 border-t-transparent rounded-full" />
-              ) : (
-                <ArrowUpRight className="h-4 w-4 mr-1" />
-              )}
-              Save to DB
-            </Button>
-          )}
-          
           {!isEditing ? (
             <>
               <Button 
@@ -679,6 +580,14 @@ const WorkoutDetails = () => {
                       onClick={() => handleUpdateExerciseSets(exerciseIndex, workout.exercises[exerciseIndex].sets)}
                     >
                       <Save className="h-3 w-3 mr-1" /> Save
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-500/20"
+                      onClick={() => handleDeleteExercise(exerciseIndex)}
+                    >
+                      <Trash className="h-3 w-3 mr-1" /> Delete
                     </Button>
                   </div>
                 </div>

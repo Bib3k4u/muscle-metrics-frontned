@@ -47,8 +47,16 @@ const NewWorkout = () => {
     
     const fetchMuscleGroups = async () => {
       try {
+        setLoading(true);
         const response = await muscleGroupsApi.getAll();
         setMuscleGroups(response.data);
+        
+        if (response.usingMock) {
+          toast({
+            title: "Notice",
+            description: "Using local muscle group data due to connection issues",
+          });
+        }
       } catch (error) {
         console.error("Failed to fetch muscle groups:", error);
         toast({
@@ -68,11 +76,34 @@ const NewWorkout = () => {
     e.preventDefault();
     if (!name || !date || selectedMuscleGroups.length === 0) return;
     
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    let formattedDate = date;
+    
+    // If date is in DD/MM/YYYY format, convert it to YYYY-MM-DD
+    if (date.includes('/')) {
+      const parts = date.split('/');
+      if (parts.length === 3) {
+        // Assuming DD/MM/YYYY format
+        formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+    }
+    
+    if (!dateRegex.test(formattedDate)) {
+      toast({
+        title: "Invalid date format",
+        description: "Please use YYYY-MM-DD format",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setSubmitting(true);
     try {
+      // Create workout directly via API - no fallback
       const response = await workoutsApi.create({
         name,
-        date,
+        date: formattedDate,
         targetMuscleGroupIds: selectedMuscleGroups,
         notes,
       });
@@ -87,7 +118,7 @@ const NewWorkout = () => {
       console.error("Failed to create workout:", error);
       toast({
         title: "Error",
-        description: "Failed to create workout",
+        description: "Failed to create workout. Please try again when the backend is available.",
         variant: "destructive",
       });
     } finally {
