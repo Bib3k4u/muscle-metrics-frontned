@@ -1,0 +1,76 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 225 33% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 228 22% 19%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 228 22% 19%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-muscle-dark text-foreground antialiased;
+  }
+
+  .mobile-container {
+    @apply max-w-md mx-auto min-h-screen pb-20;
+  }
+  
+  .bottom-nav {
+    @apply fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-card border-t border-border backdrop-blur-lg z-50;
+  }
+  
+  .bottom-nav-item {
+    @apply flex-1 flex flex-col items-center justify-center py-3 text-muted-foreground transition-colors;
+  }
+  
+  .bottom-nav-item.active {
+    @apply text-muscle-accent;
+  }
+  
+  .card-gradient {
+    @apply bg-gradient-to-br from-card to-muscle-dark/70;
+  }
+  
+  .btn-primary {
+    @apply bg-muscle-primary hover:bg-muscle-primary/90 text-white font-medium py-3 px-4 rounded-md transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary hover:bg-secondary/90 text-white font-medium py-3 px-4 rounded-md transition-colors;
+  }
+}
