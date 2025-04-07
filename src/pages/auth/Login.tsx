@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Dumbbell, LineChart, ClipboardList, Zap, TrendingUp, Calendar, Bot, Award, Activity, Smartphone } from "lucide-react";
+import { Loader2, Dumbbell, LineChart, ClipboardList, Zap, TrendingUp, Calendar, Bot, Award, Activity, Smartphone, MessageSquare } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 
@@ -165,6 +165,29 @@ const Login = () => {
           scientific analysis to maximize your results.
         </p>
       </motion.div>
+
+      <div className="flex justify-center">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 1.4 }}
+        className="text-center  mb-6"
+      >
+        <a
+          href="https://forms.gle/CssppT46b16YHCTK6"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Button 
+            variant="outline" 
+            className="text-sm flex items-center gap-2"
+          >
+            <MessageSquare className="w-4 h-4" />
+            Give Feedback
+          </Button>
+        </a>
+      </motion.div>
+      </div>
       
       {/* Feature Highlights */}
       <motion.div
@@ -196,6 +219,8 @@ const Login = () => {
           ))}
         </div>
       </motion.div>
+
+      
       
       {/* Final CTA */}
       <motion.div
