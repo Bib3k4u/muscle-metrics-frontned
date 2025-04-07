@@ -7,7 +7,7 @@ const isLocalhost = window.location.hostname === 'localhost' || window.location.
 // Use a relative URL in development to leverage the Vite proxy
 const apiBaseUrl = isDevelopment 
   ? '/api' // When in development, use relative URL that will be handled by proxy
-  : 'https://muscle-metrics-backend-production.up.railway.app/api';
+  : 'https://muscle-metrics-backend-1.onrender.com/api';
 
 console.log(`API configured with: ${apiBaseUrl}`);
 console.log(`Development mode: ${isDevelopment}`);

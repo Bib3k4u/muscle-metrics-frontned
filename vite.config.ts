@@ -5,12 +5,13 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  base: '/',
   server: {
     host: "::",
     port: 3000,
     proxy: {
       '/api': {
-        target: 'https://muscle-metrics-backend-production.up.railway.app',
+        target: 'https://muscle-metrics-backend-1.onrender.com',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, '/api'),

@@ -587,7 +587,7 @@ const WorkoutDetails = () => {
                       className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-500/20"
                       onClick={() => handleDeleteExercise(exerciseIndex)}
                     >
-                      <Trash className="h-3 w-3 mr-1" /> Delete
+                      <Trash className="h-3 w-3 mr-1" /> 
                     </Button>
                   </div>
                 </div>
